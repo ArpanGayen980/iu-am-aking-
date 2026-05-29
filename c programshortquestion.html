@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C-PROG MASTERY 3D QUIZ</title>
+    
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Three.js (CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* Custom Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            15% { transform: translateX(-12px) rotate(-2deg); }
+            30% { transform: translateX(12px) rotate(2deg); }
+            45% { transform: translateX(-12px) rotate(-2deg); }
+            60% { transform: translateX(12px) rotate(2deg); }
+            75% { transform: translateX(-8px) rotate(-1deg); }
+        }
+        @keyframes rainConfetti {
+            0% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translateY(115vh) rotate(1080deg) scale(0.5); opacity: 0; }
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            60% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        .transition-transform-3d { transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        .animate-bounce-in { animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen overflow-hidden font-sans selection:bg-indigo-500/30">
+
+    <!-- Three.js Background -->
+    <div id="three-container" class="fixed inset-0 pointer-events-none -z-10"></div>
+    
+    <!-- Confetti Container -->
+    <div id="confetti-container" class="fixed inset-0 pointer-events-none z-50 overflow-hidden"></div>
+
+    <!-- Header -->
+    <header class="fixed top-0 w-full p-4 sm:p-6 flex justify-between items-center z-40 bg-gradient-to-b from-slate-950/80 to-transparent">
+        <div class="flex items-center gap-2 text-xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400">
+            <i class="fa-solid fa-bolt text-cyan-400"></i>
+            C-PROG MASTERY
+        </div>
+        <div class="flex items-center gap-4">
+            <button onclick="toggleMute()" class="p-2 w-10 h-10 rounded-full glass-panel hover:bg-white/10 transition-colors flex items-center justify-center">
+                <i id="mute-icon" class="fa-solid fa-volume-high text-cyan-400"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="app" class="relative z-10 flex flex-col items-center justify-center min-h-screen p-4 pt-20">
+        <!-- Renders dynamically through JS -->
+    </main>
+
+    <!-- JavaScript Game Logic -->
+    <script>
+        // --- GAME DATA ---
+        const ALL_QUESTIONS = [
+            { q: "Which of the following is used to perform computations on the entered data?", o: ["Processor", "RAM", "Compiler", "Flowchart"], a: "Processor" },
+            { q: "Which one of the following is a volatile memory?", o: ["ROM", "RAM", "Hard Disk", "Cache"], a: "RAM" },
+            { q: "Which of the following is a pictorial representation of an algorithm?", o: ["Flowchart", "Algorithm", "Pseudo code", "Program"], a: "Flowchart" },
+            { q: "What translates high level language into machine language?", o: ["Compiler", "Assembler", "Interpreter", "Processor"], a: "Compiler" },
+            { q: "Which of the following is not a valid variable declaration?", o: ["int class2;", "int 2class;", "int _class;", "int class_2;"], a: "int 2class;" },
+            { q: "8 + 4 * 5 + 6 / 2 yields?", o: ["31", "24", "63", "30"], a: "31" },
+            { q: "Value of ++a + b++ if a=3, b=5?", o: ["8", "9", "10", "11"], a: "9" },
+            { q: "What defines the order of evaluation when operators have same precedence?", o: ["Precedence", "Associativity", "Syntax", "Grammar"], a: "Associativity" },
+            { q: "Escape sequence for next line?", o: ["\\t", "\\n", "\\r", "\\b"], a: "\\n" },
+            { q: "sum = sum + i equivalent to?", o: ["sum =+ i;", "sum += i;", "sum i= +;", "sum++ i;"], a: "sum += i;" },
+            { q: "Minimum number of times do-while loop executes?", o: ["0", "1", "2", "Infinite"], a: "1" },
+            { q: "While loop terminates when condition returns?", o: ["One (1)", "Zero (0)", "True", "Negative"], a: "Zero (0)" },
+            { q: "Alternative of if-else for two-way selection?", o: ["Conditional Operator", "Switch", "For loop", "While loop"], a: "Conditional Operator" },
+            { q: "Statement used to send back value to calling function?", o: ["break", "continue", "return", "exit"], a: "return" },
+            { q: "Statement used to skip remaining loop part and continue next iteration?", o: ["break", "continue", "return", "pass"], a: "continue" },
+            { q: "Which is not checked in switch case?", o: ["int", "char", "enum", "float"], a: "float" },
+            { q: "Exit-controlled loop?", o: ["for", "while", "do-while", "if-else"], a: "do-while" },
+            { q: "Default statement executes when?", o: ["True case is found", "All case statements are false", "Loop ends", "Program starts"], a: "All case statements are false" },
+            { q: "int a[10] reserves how many locations?", o: ["9", "10", "11", "0"], a: "10" },
+            { q: "Correct syntax for 1-D array initialization?", o: ["int num[3]={0,0,0};", "int num{3}=[0,0,0];", "int num[3]=[0,0,0];", "int num(3)={0,0,0};"], a: "int num[3]={0,0,0};" },
+            { q: "Array index starts from?", o: ["0", "1", "-1", "None"], a: "0" },
+            { q: "Correct 2x3 matrix declaration?", o: ["int m[2,3];", "int m(2)(3);", "int m[2][3];", "int m[3][2];"], a: "int m[2][3];" },
+            { q: "int group[20]={0}; means?", o: ["First element is zero", "Last element is zero", "Every element initialized with zero", "Garbage values"], a: "Every element initialized with zero" },
+            { q: "To store table of values?", o: ["1-D array", "Two-dimensional array", "Pointer", "Structure"], a: "Two-dimensional array" },
+            { q: "A function can be called?", o: ["Once", "Twice", "Any number of times", "Never"], a: "Any number of times" },
+            { q: "What gets passed when array is argument?", o: ["Elements of array", "Size of array", "Address of the array", "Type of array"], a: "Address of the array" },
+            { q: "sqrt() belongs to which header file?", o: ["stdio.h", "conio.h", "math.h", "string.h"], a: "math.h" },
+            { q: "Actual and formal parameters must agree in?", o: ["Names", "Number of arguments and data types", "Return type", "Memory address"], a: "Number of arguments and data types" },
+            { q: "Function calling itself is?", o: ["Inline function", "Recursive function", "Main function", "Library function"], a: "Recursive function" },
+            { q: "Structure stores?", o: ["Items of same data type", "Items of different data type", "Only integers", "Only characters"], a: "Items of different data type" },
+        ];
+
+        const QUESTIONS_PER_LEVEL = 5;
+        const TOTAL_LEVELS = Math.ceil(ALL_QUESTIONS.length / QUESTIONS_PER_LEVEL);
+        const TIME_PER_QUESTION = 15;
+
+        // Game State
+        const state = {
+            gameState: 'start', // start, playing, levelComplete, gameOver
+            currentLevel: 0,
+            questionIndex: 0,
+            score: 0,
+            highScore: localStorage.getItem('cProgQuizHighScore') || 0,
+            timeLeft: TIME_PER_QUESTION,
+            answerStatus: null, // 'correct', 'wrong', null
+            isMuted: false,
+            shuffledOptions: [],
+            currentQuestion: null,
+            timerInterval: null
+        };
+
+        // --- AUDIO ENGINE ---
+        const playSound = (type) => {
+            if (state.isMuted) return;
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                const now = ctx.currentTime;
+                
+                if (type === 'correct') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(554.37, now + 0.1);
+                    osc.frequency.setValueAtTime(659.25, now + 0.2);
+                    osc.frequency.setValueAtTime(880, now + 0.3);
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(0.4, now + 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+                    osc.start(now);
+                    osc.stop(now + 0.8);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, now);
+                    osc.frequency.exponentialRampToValueAtTime(50, now + 0.4);
+                    gain.gain.setValueAtTime(0.4, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                } else if (type === 'hover') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(600, now);
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } else if (type === 'levelUp') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(554, now + 0.1);
+                    osc.frequency.setValueAtTime(659, now + 0.2);
+                    osc.frequency.setValueAtTime(880, now + 0.3);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.6);
+                    osc.start(now);
+                    osc.stop(now + 0.6);
+                }
+            } catch (e) {
+                console.error("Audio error", e);
+            }
+        };
+
+        const toggleMute = () => {
+            state.isMuted = !state.isMuted;
+            const icon = document.getElementById('mute-icon');
+            if(state.isMuted) {
+                icon.className = 'fa-solid fa-volume-xmark text-slate-400';
+            } else {
+                icon.className = 'fa-solid fa-volume-high text-cyan-400';
+            }
+        };
+
+        // --- THREE.JS BACKGROUND ---
+        function initThreeJS() {
+            const container = document.getElementById('three-container');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            const icosahedron = new THREE.Mesh(
+                new THREE.IcosahedronGeometry(2, 0),
+                new THREE.MeshBasicMaterial({ color: 0x4f46e5, wireframe: true, transparent: true, opacity: 0.15 })
+            );
+            icosahedron.position.set(-4, 0, -5);
+            scene.add(icosahedron);
+
+            const torus = new THREE.Mesh(
+                new THREE.TorusGeometry(3, 0.8, 16, 50),
+                new THREE.MeshBasicMaterial({ color: 0xa855f7, wireframe: true, transparent: true, opacity: 0.1 })
+            );
+            torus.position.set(5, 2, -8);
+            scene.add(torus);
+
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particlesCount = 700;
+            const posArray = new Float32Array(particlesCount * 3);
+            for(let i = 0; i < particlesCount * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 30;
+            }
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const particles = new THREE.Points(
+                particlesGeometry,
+                new THREE.PointsMaterial({ size: 0.05, color: 0x00ffff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending })
+            );
+            scene.add(particles);
+
+            camera.position.z = 5;
+
+            let mouseX = 0, mouseY = 0;
+            document.addEventListener('mousemove', (event) => {
+                mouseX = (event.clientX - window.innerWidth / 2) * 0.001;
+                mouseY = (event.clientY - window.innerHeight / 2) * 0.001;
+            });
+
+            function animate() {
+                requestAnimationFrame(animate);
+                icosahedron.rotation.x += 0.001;
+                icosahedron.rotation.y += 0.002;
+                torus.rotation.x -= 0.001;
+                torus.rotation.y += 0.001;
+                particles.rotation.y += 0.0005;
+                
+                camera.position.x += (mouseX - camera.position.x) * 0.05;
+                camera.position.y += (-mouseY - camera.position.y) * 0.05;
+                camera.lookAt(scene.position);
+                
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        // --- GAME LOGIC & RENDERING ---
+        
+        function shuffleArray(array) {
+            let shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        function triggerMassiveConfetti() {
+            const container = document.getElementById('confetti-container');
+            const colors = ['#4ade80', '#2dd4bf', '#fbbf24', '#f87171', '#a855f7', '#ec4899', '#3b82f6'];
+            
+            for(let i=0; i<150; i++) {
+                const confetti = document.createElement('div');
+                const isCircle = Math.random() > 0.5;
+                const size = 6 + Math.random() * 10;
+                
+                confetti.style.position = 'absolute';
+                confetti.style.left = `${Math.random() * 100}vw`;
+                confetti.style.top = `-10vh`;
+                confetti.style.width = `${size}px`;
+                confetti.style.height = `${size}px`;
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.borderRadius = isCircle ? '50%' : '2px';
+                confetti.style.boxShadow = `0 0 10px ${confetti.style.backgroundColor}`;
+                
+                const animDuration = 1.5 + Math.random() * 2;
+                const animDelay = Math.random() * 0.5;
+                const rotation = Math.random() * 360;
+                
+                confetti.style.animation = `rainConfetti ${animDuration}s cubic-bezier(0.25, 0.46, 0.45, 0.94) ${animDelay}s forwards`;
+                confetti.style.transform = `rotate(${rotation}deg)`;
+                
+                container.appendChild(confetti);
+            }
+
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 4000);
+        }
+
+        function startTimer() {
+            clearInterval(state.timerInterval);
+            state.timerInterval = setInterval(() => {
+                if (state.timeLeft > 0 && !state.answerStatus) {
+                    state.timeLeft--;
+                    updateTimerUI();
+                } else if (state.timeLeft <= 0 && !state.answerStatus) {
+                    handleAnswer(null); // Time out
+                }
+            }, 1000);
+        }
+
+        function updateTimerUI() {
+            const timeText = document.getElementById('time-text');
+            const timeBar = document.getElementById('time-bar');
+            const timerContainer = document.getElementById('timer-container');
+            
+            if (timeText) timeText.innerText = `00:${state.timeLeft.toString().padStart(2, '0')}`;
+            if (timeBar) {
+                timeBar.style.width = `${(state.timeLeft / TIME_PER_QUESTION) * 100}%`;
+                if (state.timeLeft < 5) {
+                    timeBar.classList.replace('bg-cyan-400', 'bg-red-500');
+                    timerContainer.classList.add('bg-red-500/20', 'border-red-500/50', 'text-red-400', 'animate-pulse');
+                    timerContainer.classList.remove('bg-slate-800/50', 'border-slate-700', 'text-cyan-400');
+                }
+            }
+        }
+
+        function attachCardTilt() {
+            const card = document.getElementById('quiz-card');
+            if(!card) return;
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+                const rotateX = (y / rect.height) * -15; 
+                const rotateY = (x / rect.width) * 15;
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+            });
+        }
+
+        function playHover() {
+            if(!state.answerStatus) playSound('hover');
+        }
+
+        function startGame() {
+            state.gameState = 'playing';
+            state.currentLevel = 0;
+            state.questionIndex = 0;
+            state.score = 0;
+            state.answerStatus = null;
+            playSound('levelUp');
+            loadQuestion();
+        }
+
+        function nextLevel() {
+            state.currentLevel++;
+            state.questionIndex = 0;
+            state.gameState = 'playing';
+            playSound('levelUp');
+            loadQuestion();
+        }
+
+        function endGame() {
+            state.gameState = 'gameOver';
+            clearInterval(state.timerInterval);
+            if (state.score > state.highScore) {
+                state.highScore = state.score;
+                localStorage.setItem('cProgQuizHighScore', state.score);
+            }
+            render();
+        }
+
+        function loadQuestion() {
+            state.answerStatus = null;
+            state.timeLeft = TIME_PER_QUESTION;
+            const globalIndex = state.currentLevel * QUESTIONS_PER_LEVEL + state.questionIndex;
+            state.currentQuestion = ALL_QUESTIONS[globalIndex];
+            state.shuffledOptions = shuffleArray(state.currentQuestion.o);
+            render();
+            startTimer();
+        }
+
+        function handleAnswer(selectedOption) {
+            if (state.answerStatus !== null) return;
+            
+            clearInterval(state.timerInterval);
+            const isCorrect = selectedOption === state.currentQuestion.a;
+            
+            if (isCorrect) {
+                state.answerStatus = 'correct';
+                playSound('correct');
+                triggerMassiveConfetti();
+                state.score += (100 + (state.timeLeft * 5));
+            } else {
+                state.answerStatus = 'wrong';
+                playSound('wrong');
+            }
+
+            render(); // Re-render to show correct/wrong styles
+
+            setTimeout(() => {
+                if (state.questionIndex + 1 < QUESTIONS_PER_LEVEL) {
+                    state.questionIndex++;
+                    loadQuestion();
+                } else {
+                    if (state.currentLevel + 1 < TOTAL_LEVELS) {
+                        state.gameState = 'levelComplete';
+                        render();
+                    } else {
+                        endGame();
+                    }
+                }
+            }, 2500);
+        }
+
+        // --- RENDER FUNCTION ---
+        function render() {
+            const app = document.getElementById('app');
+            let html = '';
+
+            if (state.gameState === 'start') {
+                html = `
+                <div class="text-center animate-float max-w-lg w-full">
+                    <div class="glass-panel p-8 sm:p-12 rounded-3xl shadow-[0_0_50px_rgba(79,70,229,0.2)]">
+                        <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-indigo-500/20 mb-6 relative">
+                            <i class="fa-solid fa-shield-halved text-4xl text-indigo-400"></i>
+                        </div>
+                        <h1 class="text-4xl sm:text-5xl font-extrabold mb-4 bg-clip-text text-transparent bg-gradient-to-br from-white to-slate-400">
+                            SYSTEM <span class="text-indigo-400">READY</span>
+                        </h1>
+                        <p class="text-slate-400 mb-8 text-lg">
+                            Initialize the sequence and test your knowledge across ${TOTAL_LEVELS} security levels.
+                        </p>
+                        
+                        <div class="flex justify-center gap-6 mb-8 text-sm">
+                            <div class="flex flex-col items-center">
+                                <span class="text-cyan-400 font-bold text-xl">${ALL_QUESTIONS.length}</span>
+                                <span class="text-slate-500">Modules</span>
+                            </div>
+                            <div class="w-px bg-slate-700"></div>
+                            <div class="flex flex-col items-center">
+                                <span class="text-purple-400 font-bold text-xl">${TOTAL_LEVELS}</span>
+                                <span class="text-slate-500">Levels</span>
+                            </div>
+                        </div>
+
+                        <button onclick="startGame()" onmouseenter="playHover()" class="group relative inline-flex items-center justify-center gap-2 w-full px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl transition-all duration-300 overflow-hidden shadow-[0_0_20px_rgba(79,70,229,0.4)] hover:shadow-[0_0_40px_rgba(79,70,229,0.6)] hover:-translate-y-1">
+                            <div class="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent)] -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                            <i class="fa-solid fa-play"></i> INITIATE PROTOCOL
+                        </button>
+                    </div>
+                </div>`;
+            } 
+            
+            else if (state.gameState === 'playing' && state.currentQuestion) {
+                const globalIdx = state.currentLevel * QUESTIONS_PER_LEVEL + state.questionIndex;
+                
+                // Progress Bar HTML
+                let progressHtml = '';
+                for(let i=0; i<QUESTIONS_PER_LEVEL; i++) {
+                    let classes = 'h-2 rounded-full transition-all duration-500 ';
+                    if(i < state.questionIndex) classes += 'w-8 bg-cyan-400 shadow-[0_0_10px_#22d3ee]';
+                    else if(i === state.questionIndex) classes += 'w-12 bg-indigo-500 shadow-[0_0_10px_#6366f1] animate-pulse';
+                    else classes += 'w-8 bg-slate-800';
+                    progressHtml += `<div class="${classes}"></div>`;
+                }
+
+                // Options HTML
+                const alphabet = ['A', 'B', 'C', 'D'];
+                let optionsHtml = '';
+                state.shuffledOptions.forEach((option, idx) => {
+                    const isCorrectAnswer = option === state.currentQuestion.a;
+                    let btnClass = "relative overflow-hidden text-left p-4 sm:p-5 rounded-2xl border transition-all duration-300 flex items-center gap-4 group ";
+                    let iconHtml = '';
+                    let letterClass = "";
+                    let textClass = "";
+
+                    if (state.answerStatus === null) {
+                        btnClass += "bg-slate-800/40 border-slate-700 hover:bg-indigo-600/20 hover:border-indigo-500/50 hover:shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:-translate-y-1 cursor-pointer";
+                        letterClass = "bg-slate-700 text-slate-300 group-hover:bg-indigo-500 group-hover:text-white shadow-inner";
+                        textClass = "text-slate-100";
+                    } else {
+                        btnClass += "cursor-default ";
+                        if (isCorrectAnswer) {
+                            btnClass += "bg-green-500/30 border-green-400 shadow-[0_0_30px_rgba(74,222,128,0.4)] opacity-100 scale-[1.02] z-10 ";
+                            letterClass = "bg-green-500 text-white shadow-[0_0_15px_#4ade80]";
+                            textClass = "text-green-100";
+                            iconHtml = `<i class="fa-solid fa-circle-check text-2xl text-green-400 ml-auto animate-bounce-in"></i>`;
+                        } else if (state.answerStatus === 'wrong' && option === state.selectedOption) {
+                            btnClass += "bg-red-500/30 border-red-500 shadow-[0_0_20px_rgba(248,113,113,0.3)] opacity-90 ";
+                            letterClass = "bg-red-500 text-white shadow-[0_0_15px_#f87171]";
+                            textClass = "text-red-100";
+                            iconHtml = `<i class="fa-solid fa-circle-xmark text-2xl text-red-400 ml-auto animate-bounce-in"></i>`;
+                        } else {
+                            btnClass += "bg-slate-800/20 border-slate-800 opacity-30 scale-95 ";
+                            letterClass = "bg-slate-800 text-slate-500";
+                            textClass = "text-slate-100";
+                        }
+                    }
+
+                    // Using a hack to pass string parameter to handleAnswer
+                    const safeOption = option.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+                    optionsHtml += `
+                    <button onclick="handleAnswer('${safeOption}')" onmouseenter="playHover()" class="${btnClass}" ${state.answerStatus !== null ? 'disabled' : ''}>
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center font-mono font-bold text-base shrink-0 transition-all duration-300 ${letterClass}">
+                            ${alphabet[idx]}
+                        </div>
+                        <span class="text-sm sm:text-base font-medium ${textClass}">${option}</span>
+                        ${iconHtml}
+                    </button>`;
+                });
+
+                // Status Overlay HTML
+                let overlayHtml = '';
+                if (state.answerStatus) {
+                    if (state.answerStatus === 'correct') {
+                        overlayHtml = `
+                        <div class="absolute inset-0 z-30 flex items-center justify-center backdrop-blur-sm rounded-3xl animate-bounce-in">
+                            <div class="flex flex-col items-center p-8 rounded-2xl glass-panel transform scale-110 text-green-400 border-green-400/50 shadow-[0_0_40px_rgba(74,222,128,0.4)] bg-green-950/40">
+                                <div class="relative mb-3 animate-bounce">
+                                    <i class="fa-solid fa-wand-magic-sparkles absolute -top-2 -right-4 text-2xl text-yellow-300"></i>
+                                    <i class="fa-solid fa-circle-check text-7xl"></i>
+                                </div>
+                                <h2 class="text-3xl font-black mb-1">Correct Answer ✅</h2>
+                                <span class="text-lg text-green-300 font-mono mt-1 font-bold">+${100 + (state.timeLeft * 5)} pts</span>
+                            </div>
+                        </div>`;
+                    } else {
+                        overlayHtml = `
+                        <div class="absolute inset-0 z-30 flex items-center justify-center backdrop-blur-sm rounded-3xl animate-bounce-in">
+                            <div class="flex flex-col items-center p-8 rounded-2xl glass-panel transform scale-110 text-red-400 border-red-400/50 shadow-[0_0_40px_rgba(248,113,113,0.4)] bg-red-950/40">
+                                <i class="fa-solid fa-circle-xmark text-7xl mb-3"></i>
+                                <h2 class="text-3xl font-black mb-2">Wrong Answer ❌</h2>
+                                <span class="text-sm text-red-200 mt-2 opacity-80 uppercase tracking-widest">System Overridden</span>
+                            </div>
+                        </div>`;
+                    }
+                }
+
+                let cardClasses = `glass-panel p-6 sm:p-10 rounded-3xl transition-transform-3d relative z-20 shadow-2xl `;
+                if(state.answerStatus === 'wrong') cardClasses += `animate-[shake_0.6s_ease-in-out] shadow-[0_0_60px_rgba(248,113,113,0.3)] border-red-500/40`;
+                if(state.answerStatus === 'correct') cardClasses += `shadow-[0_0_60px_rgba(74,222,128,0.3)] border-green-500/40`;
+
+                html = `
+                <div class="w-full max-w-3xl flex flex-col gap-6">
+                    <div class="flex justify-between items-end mb-2">
+                        <div>
+                            <div class="text-xs text-indigo-400 font-mono mb-1 tracking-widest uppercase">Security Level 0${state.currentLevel + 1}</div>
+                            <div class="flex gap-1">${progressHtml}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-slate-400 font-mono mb-1 tracking-widest uppercase">Score</div>
+                            <div class="text-2xl font-bold text-white font-mono">${state.score.toString().padStart(5, '0')}</div>
+                        </div>
+                    </div>
+
+                    <div id="quiz-card" class="${cardClasses}">
+                        <div class="absolute top-0 left-0 w-full h-1.5 bg-slate-800 rounded-t-3xl overflow-hidden">
+                            <div id="time-bar" class="h-full transition-all duration-1000 linear ${state.timeLeft < 5 ? 'bg-red-500' : 'bg-cyan-400'}" style="width: ${(state.timeLeft / TIME_PER_QUESTION) * 100}%"></div>
+                        </div>
+
+                        ${overlayHtml}
+
+                        <div class="flex items-start justify-between gap-4 mb-8 relative z-10">
+                            <h2 class="text-xl sm:text-2xl font-medium leading-relaxed">
+                                <span class="text-indigo-400 mr-2 font-mono font-bold">[${globalIdx + 1}]</span>
+                                ${state.currentQuestion.q}
+                            </h2>
+                            <div id="timer-container" class="flex items-center gap-2 px-3 py-1.5 rounded-lg border font-mono font-bold text-lg shrink-0 ${state.timeLeft <= 5 ? 'bg-red-500/20 border-red-500/50 text-red-400 animate-pulse' : 'bg-slate-800/50 border-slate-700 text-cyan-400'}">
+                                <i class="fa-regular fa-clock"></i>
+                                <span id="time-text">00:${state.timeLeft.toString().padStart(2, '0')}</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-10">
+                            ${optionsHtml}
+                        </div>
+                    </div>
+                </div>`;
+            }
+            
+            else if (state.gameState === 'levelComplete') {
+                html = `
+                <div class="text-center animate-float z-20">
+                    <div class="glass-panel p-10 sm:p-16 rounded-[2.5rem] relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-b from-indigo-500/10 to-transparent"></div>
+                        <div class="relative">
+                            <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-cyan-500/20 text-cyan-400 mb-6 shadow-[0_0_40px_rgba(34,211,238,0.4)]">
+                                <i class="fa-solid fa-wand-magic-sparkles text-5xl"></i>
+                            </div>
+                            <h2 class="text-3xl sm:text-4xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-indigo-300 uppercase tracking-widest">
+                                Level 0${state.currentLevel + 1} Cleared
+                            </h2>
+                            <p class="text-slate-400 mb-10 text-lg">System algorithms optimized. Proceeding to next node.</p>
+                            
+                            <div class="grid grid-cols-2 gap-4 mb-10">
+                                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700">
+                                    <div class="text-slate-400 text-sm mb-1 uppercase tracking-wider">Current Score</div>
+                                    <div class="text-2xl font-bold font-mono text-white">${state.score}</div>
+                                </div>
+                                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700">
+                                    <div class="text-slate-400 text-sm mb-1 uppercase tracking-wider">Next Level</div>
+                                    <div class="text-2xl font-bold font-mono text-cyan-400">0${state.currentLevel + 2}</div>
+                                </div>
+                            </div>
+
+                            <button onclick="nextLevel()" onmouseenter="playHover()" class="group relative inline-flex items-center justify-center gap-3 w-full px-8 py-4 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-black rounded-2xl transition-all duration-300 overflow-hidden shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:shadow-[0_0_40px_rgba(34,211,238,0.5)]">
+                                INITIALIZE NEXT NODE
+                                <i class="fa-solid fa-chevron-right group-hover:translate-x-1 transition-transform"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+            }
+            
+            else if (state.gameState === 'gameOver') {
+                const accuracy = Math.round((state.score / (ALL_QUESTIONS.length * 175)) * 100);
+                
+                html = `
+                <div class="text-center animate-bounce-in z-20 w-full max-w-lg">
+                    <div class="glass-panel p-10 sm:p-14 rounded-[3rem] border-t border-t-white/20">
+                        <div class="inline-block p-5 rounded-3xl bg-indigo-500/20 mb-6 relative">
+                            <i class="fa-solid fa-trophy text-6xl text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]"></i>
+                            <i class="fa-solid fa-star absolute -top-2 -right-2 text-2xl text-yellow-200 animate-pulse"></i>
+                        </div>
+                        
+                        <h2 class="text-4xl sm:text-5xl font-black mb-2 tracking-tight">SIMULATION <br/><span class="text-indigo-400">COMPLETE</span></h2>
+                        <p class="text-slate-400 mb-8">You have processed all data nodes.</p>
+                        
+                        <div class="space-y-4 mb-10">
+                            <div class="bg-slate-800/40 border border-slate-700 p-6 rounded-3xl flex justify-between items-center backdrop-blur-md relative overflow-hidden">
+                                <div class="absolute left-0 top-0 w-2 h-full bg-cyan-500"></div>
+                                <div class="text-left">
+                                    <div class="text-sm text-slate-400 uppercase tracking-widest mb-1">Final Score</div>
+                                    <div class="text-4xl font-black font-mono text-white">${state.score}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm text-slate-400 uppercase tracking-widest mb-1">Max Potential</div>
+                                    <div class="text-xl font-bold font-mono text-slate-500">${ALL_QUESTIONS.length * 175}</div>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-800/40 border border-slate-700 p-4 rounded-2xl flex justify-between items-center">
+                                <div class="text-sm text-slate-400 uppercase tracking-widest">Accuracy</div>
+                                <div class="text-lg font-bold font-mono text-cyan-400">${accuracy}%</div>
+                            </div>
+
+                            ${state.highScore > 0 ? `
+                            <div class="bg-slate-800/20 border border-slate-800/50 p-4 rounded-2xl flex justify-between items-center">
+                                <div class="text-sm text-slate-400">Personal Best</div>
+                                <div class="text-lg font-bold font-mono text-yellow-400">${Math.max(state.score, state.highScore)}</div>
+                            </div>` : ''}
+                        </div>
+
+                        <button onclick="startGame()" onmouseenter="playHover()" class="group w-full inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold rounded-2xl transition-all duration-300">
+                            <i class="fa-solid fa-rotate-right group-hover:-rotate-180 transition-transform duration-500"></i>
+                            REBOOT SYSTEM
+                        </button>
+                    </div>
+                </div>`;
+            }
+
+            app.innerHTML = html;
+
+            // Re-attach DOM specific listeners after HTML replace
+            if(state.gameState === 'playing') {
+                attachCardTilt();
+            }
+        }
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            initThreeJS();
+            render(); // Initial Render
+        };
+    </script>
+</body>
+</html>
